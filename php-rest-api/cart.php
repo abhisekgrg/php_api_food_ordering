@@ -1,19 +1,19 @@
 <?php
 session_start();
 
-// Handle the OPTIONS request for CORS preflight
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    header('Access-Control-Allow-Origin: *');
-    header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-    header('Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With');
-    exit(0); // Exit to prevent further processing for the OPTIONS request
+    header('Access-Control-Allow-Origin: http://localhost:5173');
+    header("Access-Control-Allow-Credentials: true");
+    header('Access-Control-Allow-Methods: POST, OPTIONS');
+    header('Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers,Access-Control-Allow-Credentials, Authorization, X-Requested-With');
+    exit(0); // End the script execution for OPTIONS request
 }
 
-// Set the headers for the actual request
 header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With');
+header('Access-Control-Allow-Origin: http://localhost:5173');
+header("Access-Control-Allow-Credentials: true");
+header('Access-Control-Allow-Methods: POST');
+header('Access-Control-Allow-Headers: Access-Control-Allow-Headers, Access-Control-Allow-Methods,Access-Control-Allow-Credentials, Content-Type, Authorization, X-Requested-With');
 
 // Functions to manage cart items
 function getCartItems() {
@@ -24,7 +24,22 @@ function addToCart($item) {
     if (!isset($_SESSION['cart'])) {
         $_SESSION['cart'] = [];
     }
-    $_SESSION['cart'][] = $item;
+
+    // Check if the item already exists in the cart
+    $exists = false;
+    foreach ($_SESSION['cart'] as &$cartItem) {
+        if ($cartItem['id'] === $item['id']) {
+            // If the item exists, increase the quantity
+            $cartItem['quantity'] += $item['quantity'];
+            $exists = true;
+            break;
+        }
+    }
+
+    // If the item does not exist, add it to the cart
+    if (!$exists) {
+        $_SESSION['cart'][] = $item;
+    }
 }
 
 function updateCartItem($itemId, $quantity) {
@@ -58,21 +73,23 @@ try {
         case 'get':
             echo json_encode(getCartItems());
             break;
-            case 'add':
-                $data = json_decode(file_get_contents('php://input'), true);
-                if (isset($data['id']) && isset($data['name']) && isset($data['price'])) {
-                    $item = [
-                        'id' => $data['id'],
-                        'name' => $data['name'],
-                        'price' => $data['price'],
-                        
-                    ];
-                    addToCart($item);
-                    echo json_encode(['status' => 'success', 'message' => 'Item added to cart']);
-                } else {
-                    echo json_encode(['status' => 'error', 'message' => 'Invalid data']);
-                }
-                break;
+
+        case 'add':
+            $data = json_decode(file_get_contents('php://input'), true);
+            if (isset($data['id']) && isset($data['name']) && isset($data['price'])) {
+                $item = [
+                    'id' => $data['id'],
+                    'name' => $data['name'],
+                    'price' => $data['price'],
+                    'quantity' => $data['quantity'] ?? 1, // Set default quantity to 1 if not provided
+                ];
+                addToCart($item);
+                echo json_encode(['status' => 'success', 'message' => 'Item added to cart']);
+            } else {
+                echo json_encode(['status' => 'error', 'message' => 'Invalid data']);
+            }
+            break;
+
         case 'update':
             $data = json_decode(file_get_contents('php://input'), true);
             if (isset($data['id']) && isset($data['quantity'])) {
@@ -82,6 +99,7 @@ try {
                 echo json_encode(['status' => 'error', 'message' => 'Invalid data']);
             }
             break;
+
         case 'remove':
             $data = json_decode(file_get_contents('php://input'), true);
             if (isset($data['id'])) {
@@ -91,10 +109,12 @@ try {
                 echo json_encode(['status' => 'error', 'message' => 'Invalid data']);
             }
             break;
+
         case 'clear':
             clearCart();
             echo json_encode(['status' => 'success', 'message' => 'Cart cleared']);
             break;
+
         default:
             echo json_encode(['status' => 'error', 'message' => 'Invalid action']);
             break;
@@ -102,4 +122,3 @@ try {
 } catch (Exception $e) {
     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
 }
-?>
