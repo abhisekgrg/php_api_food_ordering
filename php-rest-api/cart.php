@@ -1,21 +1,21 @@
 <?php
 session_start();
 
+// Handle preflight requests (CORS)
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     header('Access-Control-Allow-Origin: http://localhost:5173');
     header("Access-Control-Allow-Credentials: true");
-    header('Access-Control-Allow-Methods: POST, OPTIONS');
-    header('Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers,Access-Control-Allow-Credentials, Authorization, X-Requested-With');
-    exit(0); // End the script execution for OPTIONS request
+    header('Access-Control-Allow-Methods: POST, GET, OPTIONS');
+    header('Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Access-Control-Allow-Credentials, Authorization, X-Requested-With');
+    exit(0);
 }
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: http://localhost:5173');
 header("Access-Control-Allow-Credentials: true");
-header('Access-Control-Allow-Methods: POST');
-header('Access-Control-Allow-Headers: Access-Control-Allow-Headers, Access-Control-Allow-Methods,Access-Control-Allow-Credentials, Content-Type, Authorization, X-Requested-With');
+header('Access-Control-Allow-Methods: POST, GET');
+header('Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Access-Control-Allow-Credentials, Authorization, X-Requested-With');
 
-// Functions to manage cart items
 function getCartItems() {
     return isset($_SESSION['cart']) ? $_SESSION['cart'] : [];
 }
@@ -25,18 +25,15 @@ function addToCart($item) {
         $_SESSION['cart'] = [];
     }
 
-    // Check if the item already exists in the cart
     $exists = false;
     foreach ($_SESSION['cart'] as &$cartItem) {
         if ($cartItem['id'] === $item['id']) {
-            // If the item exists, increase the quantity
             $cartItem['quantity'] += $item['quantity'];
             $exists = true;
             break;
         }
     }
 
-    // If the item does not exist, add it to the cart
     if (!$exists) {
         $_SESSION['cart'][] = $item;
     }
@@ -65,7 +62,6 @@ function clearCart() {
     unset($_SESSION['cart']);
 }
 
-// Handle the request
 $action = $_GET['action'] ?? '';
 
 try {
@@ -76,14 +72,8 @@ try {
 
         case 'add':
             $data = json_decode(file_get_contents('php://input'), true);
-            if (isset($data['id']) && isset($data['name']) && isset($data['price'])) {
-                $item = [
-                    'id' => $data['id'],
-                    'name' => $data['name'],
-                    'price' => $data['price'],
-                    'quantity' => $data['quantity'] ?? 1, // Set default quantity to 1 if not provided
-                ];
-                addToCart($item);
+            if (isset($data['id'], $data['name'], $data['price'], $data['quantity'])) {
+                addToCart($data);
                 echo json_encode(['status' => 'success', 'message' => 'Item added to cart']);
             } else {
                 echo json_encode(['status' => 'error', 'message' => 'Invalid data']);
@@ -92,7 +82,7 @@ try {
 
         case 'update':
             $data = json_decode(file_get_contents('php://input'), true);
-            if (isset($data['id']) && isset($data['quantity'])) {
+            if (isset($data['id'], $data['quantity'])) {
                 updateCartItem($data['id'], $data['quantity']);
                 echo json_encode(['status' => 'success', 'message' => 'Cart item updated']);
             } else {

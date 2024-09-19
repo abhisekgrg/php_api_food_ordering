@@ -1,3 +1,3 @@
 <?php
-$conn = mysqli_connect("localhost","root","","food-order") or die("connection faild")
+$conn = mysqli_connect("localhost","root","","food-system") or die("connection faild")
 ?>
